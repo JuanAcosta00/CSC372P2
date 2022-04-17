@@ -6,7 +6,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 // import java.util.Arrays;
 import java.util.Scanner; // Import the Scanner class to read text files
@@ -30,6 +29,7 @@ public class Transpiler {
   private static Pattern end = Pattern.compile("^end$");
   private static Pattern if_statements = Pattern.compile("^if(\s)?(.+)$");
   private static Pattern else_statements = Pattern.compile("^else$");
+  private static Pattern comment = Pattern.compile("^\\$\\$(.+)$");
 
   public static void main(String[] args) throws IOException {
     if(args.length == 0){
@@ -79,7 +79,13 @@ public class Transpiler {
                 if(endP.isValid()) {
                   return endP;
                 }
-                System.out.printf("ERROR COMMAND %s CANNOT BE RESOLVED\n", cmd);
+                if(matchFound == false) {
+                  Pair cmtP = commentTest(cmd);
+                  if(cmtP.isValid()) {
+                    return cmtP;
+                  }
+                  System.out.printf("ERROR COMMAND %s CANNOT BE RESOLVED\n", cmd);
+                }
               }
             }
           }
@@ -87,6 +93,20 @@ public class Transpiler {
       }
     }
     return null;
+  }
+
+  private static Pair commentTest(String cmd) {
+    Matcher m = comment.matcher(cmd);
+    boolean match = false;
+    Pair retVal = new Pair(null, null);
+    if(m.find()) {
+      match = true;
+      retVal.setIsValid(true);
+      retVal.setType("comment");
+      retVal.setValue(m.group(1));
+    }
+    printMsg(match, "<comment>", cmd, "comment");
+    return retVal;
   }
 
   private static Pair elseStatements(String cmd) {
@@ -503,6 +523,8 @@ public class Transpiler {
       addTab = 1;
     } else if (lineParsed.getType() == "else") {
       line = "  ".repeat(tab-1) + "} else {";
+    } else if (lineParsed.getType() == "comment") {
+      line = "  ".repeat(tab) + "//" + lineParsed.getValue();
     }
     System.out.printf("line type: %s\nline value: %s\nline var: %s\n", lineParsed.getType(), lineParsed.getValue(), lineParsed.getVar());
     file.println(line);

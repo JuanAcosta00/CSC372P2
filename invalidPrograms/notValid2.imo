@@ -1,2 +1,3 @@
+$$ this is not valid since the if statment does not contain a closing "end" terminator, as well as x not being defined prior
 if x
-  p("do something")
+  p("do something").

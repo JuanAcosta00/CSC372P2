@@ -1,1 +1,3 @@
-loop >> s
+$$ this is not valid as x and y are not defined
+x >> y
+end
