@@ -5,11 +5,15 @@ import java.io.FileNotFoundException;  // Import this class to handle errors
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 // import java.util.Arrays;
 import java.util.Scanner; // Import the Scanner class to read text files
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Transpiler {
-  private static Pattern func_assign = Pattern.compile("^(\\w+) => (.+)$");
+  private static List existingVariables = new ArrayList<String>();
+  // private static Pattern func_assign = Pattern.compile("^(\\w+) => (.+)$");
   private static Pattern loop = Pattern.compile("^(.+) >> (.+)$");
   private static Pattern print = Pattern.compile("^p(.+)\\.$");
   private static Pattern var_assign = Pattern.compile("^(.+)(\s?)=(\\s)?(.+)\\.$");
@@ -24,8 +28,8 @@ public class Transpiler {
   private static Pattern paren = Pattern.compile("^\\(.+\\)$");
   private static Pattern bool = Pattern.compile("^True|False$");
   private static Pattern end = Pattern.compile("^end$");
-  private static Pattern if_statments = Pattern.compile("^if(\s)?(.+)$");
-  private static Pattern else_statments = Pattern.compile("^else$");
+  private static Pattern if_statements = Pattern.compile("^if(\s)?(.+)$");
+  private static Pattern else_statements = Pattern.compile("^else$");
 
   public static void main(String[] args) throws IOException {
     if(args.length == 0){
@@ -50,15 +54,33 @@ public class Transpiler {
       if(vA.isValid()) {
         return vA;
       }
-      if(loop(cmd) == false){
+      if(matchFound == false) {
+        Pair lp = loop(cmd);
+        if(lp.isValid()) {
+          return lp;
+        }
         if(matchFound == false) {
           Pair p = print(cmd);
           if(p.isValid()) {
             return p;
           }
-          if(func_assign(cmd) == false) {
-            if(endTest(cmd)== false) {
-              System.out.printf("ERROR COMMAND %s CANNOT BE RESOLVED\n", cmd);
+          if(matchFound == false) {
+            Pair iP = ifStatements(cmd);
+            if(iP.isValid()) {
+              return iP;
+            }
+            if(matchFound == false) {
+              Pair eP = elseStatements(cmd);
+              if(eP.isValid()) {
+                return eP;
+              }
+              if(matchFound == false) {
+                Pair endP = endTest(cmd);
+                if(endP.isValid()) {
+                  return endP;
+                }
+                System.out.printf("ERROR COMMAND %s CANNOT BE RESOLVED\n", cmd);
+              }
             }
           }
         }
@@ -67,25 +89,55 @@ public class Transpiler {
     return null;
   }
 
-  private static boolean endTest(String cmd) {
-    Matcher m = end.matcher(cmd);
+  private static Pair elseStatements(String cmd) {
+    Matcher m = else_statements.matcher(cmd);
     boolean match = false;
+    Pair retVal = new Pair(null, null);
     if(m.find()) {
       match = true;
+      retVal.setIsValid(true);
+      retVal.setType("else");
     }
-    printMsg(match, "<endTerm>", cmd, "end terminator");
-    return match;
+    printMsg(match, "<if_statement>", cmd, "if statement");
+    return retVal;
   }
 
-  private static boolean func_assign(String cmd) {
-    Matcher m = func_assign.matcher(cmd);
+  private static Pair ifStatements(String cmd) {
+    Matcher m = if_statements.matcher(cmd);
     boolean match = false;
+    Pair retVal = new Pair(null, null);
     if(m.find()) {
       match = true;
+      retVal.setIsValid(true);
+      retVal.setType("if");
+      retVal.setValue(m.group(2));
     }
-    printMsg(match, "<func_assign>", cmd, "func assignment");
-    return match;
+    printMsg(match, "<if_statement>", cmd, "if statement");
+    return retVal;
+    }
+
+  private static Pair endTest(String cmd) {
+    Matcher m = end.matcher(cmd);
+    boolean match = false;
+    Pair retVal = new Pair(null, null);
+    if(m.find()) {
+      match = true;
+      retVal.setIsValid(true);
+      retVal.setType("end");
+    }
+    printMsg(match, "<endTerm>", cmd, "end terminator");
+    return retVal;
   }
+
+  // private static boolean func_assign(String cmd) {
+  //   Matcher m = func_assign.matcher(cmd);
+  //   boolean match = false;
+  //   if(m.find()) {
+  //     match = true;
+  //   }
+  //   printMsg(match, "<func_assign>", cmd, "func assignment");
+  //   return match;
+  // }
 
   private static Pair print(String cmd) {
     Matcher m = print.matcher(cmd);
@@ -100,14 +152,19 @@ public class Transpiler {
     return retVal;
   }
 
-  private static boolean loop(String cmd) {
+  private static Pair loop(String cmd) {
     Matcher m = loop.matcher(cmd);
     boolean match = false;
+    Pair retVal = new Pair(null, null);
     if(m.find()) {
       match = true;
+      retVal.setType("loop");
+      retVal.setValue(m.group(2));
+      retVal.setVar(m.group(1));
+      retVal.setIsValid(true);
     }
     printMsg(match, "<loop>", cmd, "loop statement");
-    return match;
+    return retVal;
   }
 
   private static Pair varAssign(String cmd) {
@@ -361,9 +418,13 @@ public class Transpiler {
                       "  public static void main(String[] args) {";
       out.println(init);
       while (myReader.hasNextLine()) {
-        String data = myReader.nextLine();
-        System.out.println(data);
-        writeToFile(data, out, tabs);
+        String data = myReader.nextLine().trim();
+        // System.out.println("trimmed " + data.trim());
+        if (data == "") {
+          out.println("");
+        } else {
+          tabs += writeToFile(data, out, tabs);
+        }
       }
       String ending = "  }\n}";
       out.println(ending);
@@ -375,15 +436,21 @@ public class Transpiler {
     }
   }
 
-  private static void writeToFile(String line, PrintWriter file, int tab) throws IOException {
+  private static int writeToFile(String line, PrintWriter file, int tab) throws IOException {
+    int addTab = 0;
     Pair lineParsed = parseCmd(line);
     if(lineParsed == null) {
-      // do smth
+      // ??? how tho
       line = "  ".repeat(tab) + line.replaceAll("\\.", ";");
     } else if(lineParsed.getType() == "print") {
       line = "  ".repeat(tab) + "System.out.println" + lineParsed.getValue() + ";";
     } else if(lineParsed.getType() == "String") {
-      line = "  ".repeat(tab) + "String " + lineParsed.getVar() + " = " + lineParsed.getValue() + ";";
+      if(existingVariables.contains(lineParsed.getVar())) {
+        line = "  ".repeat(tab) + lineParsed.getVar() + " = " + lineParsed.getValue() + ";";
+      } else {
+        line = "  ".repeat(tab) + "String " + lineParsed.getVar() + " = " + lineParsed.getValue() + ";";
+        existingVariables.add(lineParsed.getVar());
+      }
     } else if (lineParsed.getType() == "int") {
       String start = ((String) lineParsed.getValue()).toLowerCase();
       String val  = ((String) lineParsed.getValue()).toLowerCase().replaceAll("#/", "%");
@@ -401,12 +468,44 @@ public class Transpiler {
         start = "(int) Math.floor(" + start + ")";
       }
       System.out.println("after replaceAll "+start);
-
-      line = "  ".repeat(tab) + "int " + lineParsed.getVar() + " = " + start + ";";
+      if(existingVariables.contains(lineParsed.getVar())) {
+        line = "  ".repeat(tab) + lineParsed.getVar() + " = " + start + ";";
+      } else {
+        line = "  ".repeat(tab) + "int " + lineParsed.getVar() + " = " + start + ";";
+        existingVariables.add(lineParsed.getVar());
+      }
     }  else if (lineParsed.getType() == "boolean") {
-      line = "  ".repeat(tab) + "boolean " + lineParsed.getVar() + " = " + ((String) lineParsed.getValue()).toLowerCase() + ";";
+      if(existingVariables.contains(lineParsed.getVar())) {
+        line = "  ".repeat(tab) + lineParsed.getVar() + " = " + ((String) lineParsed.getValue()).toLowerCase() + ";";
+      } else {
+        line = "  ".repeat(tab) + "boolean " + lineParsed.getVar() + " = " + ((String) lineParsed.getValue()).toLowerCase() + ";";
+        existingVariables.add(lineParsed.getVar());
+      }
+    } else if (lineParsed.getType() == "loop") {
+      String iterator = lineParsed.getVar();
+      String rangeLen = (String)lineParsed.getValue();
+      String loop = "";
+      if(rangeLen.equals("?")) {
+        System.out.println("rangelen"+rangeLen);
+        // format while loop
+        loop = "while(" + iterator + ") {";
+      } else {
+        loop = "for (int "+ iterator+ "= 0; "+ iterator+ " < "+ rangeLen +"; "+ iterator+ "++) {";
+      }
+      line = "  ".repeat(tab) + loop;
+      addTab = 1;
+    } else if(lineParsed.getType() == "end") {
+      line = "  ".repeat(tab-1) + "}";
+      addTab = -1;
+    } else if(lineParsed.getType() == "if"){
+      String condition = (String)lineParsed.getValue();
+      line = "  ".repeat(tab) + "if (" + condition + ") {";
+      addTab = 1;
+    } else if (lineParsed.getType() == "else") {
+      line = "  ".repeat(tab-1) + "} else {";
     }
-    System.out.printf("line type: %s\nline value: %s\n", lineParsed.getType(), lineParsed.getValue());
+    System.out.printf("line type: %s\nline value: %s\nline var: %s\n", lineParsed.getType(), lineParsed.getValue(), lineParsed.getVar());
     file.println(line);
+    return addTab;
   }
 }
