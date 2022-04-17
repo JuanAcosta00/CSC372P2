@@ -31,7 +31,7 @@ public class Transpiler {
   private static Pattern else_statements = Pattern.compile("^else$");
   private static Pattern comment = Pattern.compile("^\\$\\$(.+)$");
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws IOException, TranspilerExceptions {
     if(args.length == 0){
       Scanner in = new Scanner(System.in);
       System.out.print(">> ");
@@ -426,7 +426,7 @@ public class Transpiler {
           + item + ".");
   }
 
-  private static void readFile(String path) throws IOException {
+  private static void readFile(String path) throws IOException, TranspilerExceptions {
     try {
       File myObj = new File(path);
       String[] pathArray = path.split("/");
@@ -447,6 +447,11 @@ public class Transpiler {
         }
       }
       String ending = "  }\n}";
+      if(tabs > 2) {
+        myReader.close();
+        out.close();
+        throw new TranspilerExceptions("Missing end terminator in file");
+      }
       out.println(ending);
       myReader.close();
       out.close();
@@ -456,12 +461,11 @@ public class Transpiler {
     }
   }
 
-  private static int writeToFile(String line, PrintWriter file, int tab) throws IOException {
+  private static int writeToFile(String line, PrintWriter file, int tab) throws IOException, TranspilerExceptions {
     int addTab = 0;
     Pair lineParsed = parseCmd(line);
     if(lineParsed == null) {
-      // ??? how tho
-      line = "  ".repeat(tab) + line.replaceAll("\\.", ";");
+      throw new TranspilerExceptions("line '"+line+"' is unable to be parsed, check syntax");
     } else if(lineParsed.getType() == "print") {
       line = "  ".repeat(tab) + "System.out.println" + lineParsed.getValue() + ";";
     } else if(lineParsed.getType() == "String") {
@@ -511,6 +515,9 @@ public class Transpiler {
         loop = "while(" + iterator + ") {";
       } else {
         loop = "for (int "+ iterator+ "= 0; "+ iterator+ " < "+ rangeLen +"; "+ iterator+ "++) {";
+      }
+      if(!existingVariables.contains(lineParsed.getVar()) || !existingVariables.contains(lineParsed.getValue())) {
+        throw new TranspilerExceptions("Variables in loop are not defined");
       }
       line = "  ".repeat(tab) + loop;
       addTab = 1;
