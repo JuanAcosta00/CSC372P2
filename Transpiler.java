@@ -6,12 +6,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 // import java.util.Arrays;
 import java.util.Scanner; // Import the Scanner class to read text files
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Transpiler {
   private static List existingVariables = new ArrayList<String>();
+  private static List globalVars = new ArrayList();
   // private static Pattern func_assign = Pattern.compile("^(\\w+) => (.+)$");
   private static Pattern loop = Pattern.compile("^(.+) >> (.+)$");
   private static Pattern print = Pattern.compile("^p(.+)\\.$");
@@ -30,6 +32,7 @@ public class Transpiler {
   private static Pattern if_statements = Pattern.compile("^if(\s)?(.+)$");
   private static Pattern else_statements = Pattern.compile("^else$");
   private static Pattern comment = Pattern.compile("^\\$\\$(.+)$");
+  private static Pattern arg = Pattern.compile("^argArr(.+)$");
 
   public static void main(String[] args) throws IOException, TranspilerExceptions {
     if(args.length == 0){
@@ -43,6 +46,9 @@ public class Transpiler {
       }
       in.close();
     } else {
+      for(int i = 1; i < args.length; i++) {
+        globalVars.add(args[i]);
+      }
       readFile(args[0]);
     }
   }
@@ -408,6 +414,14 @@ public class Transpiler {
               printMsg(match, "<str>", cmd, "string");
               retVal = new Pair("String", cmd);
               retVal.setIsValid(true);
+            } else {
+              m = arg.matcher(cmd);
+              match = m.find();
+              if(match) {
+                printMsg(match, "<arg>", cmd, "command line argument");
+                retVal = new Pair("arg", cmd);
+                retVal.setIsValid(true);
+              }
             }
           }
         }
@@ -434,7 +448,9 @@ public class Transpiler {
       PrintWriter out = new PrintWriter(new FileWriter(newfile+".java"));
       Scanner myReader = new Scanner(myObj);
       int tabs = 2;
+      String argArray = Arrays.toString(globalVars.toArray()).replaceAll("\\[", "").replaceAll("\\]", "");
       String init = "public class " + newfile + "{\n" +
+                      "  public static int[] argArr = new int[]{" + argArray + "};\n" +
                       "  public static void main(String[] args) {";
       out.println(init);
       while (myReader.hasNextLine()) {
@@ -532,6 +548,13 @@ public class Transpiler {
       line = "  ".repeat(tab-1) + "} else {";
     } else if (lineParsed.getType() == "comment") {
       line = "  ".repeat(tab) + "//" + lineParsed.getValue();
+    } else if (lineParsed.getType() == "arg") {
+      if(existingVariables.contains(lineParsed.getVar())) {
+        line = "  ".repeat(tab) + lineParsed.getVar() + " = " + lineParsed.getValue() + ";";
+      } else {
+        line = "  ".repeat(tab) + "int " + lineParsed.getVar() + " = " + lineParsed.getValue() + ";";
+        existingVariables.add(lineParsed.getVar());
+      }
     }
     System.out.printf("line type: %s\nline value: %s\nline var: %s\n", lineParsed.getType(), lineParsed.getValue(), lineParsed.getVar());
     file.println(line);

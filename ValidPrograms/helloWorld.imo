@@ -1,2 +1,4 @@
 x = "hello world".
 p(x).
+y = argArr[0].
+p(y).
