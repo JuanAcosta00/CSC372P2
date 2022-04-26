@@ -1,0 +1,52 @@
+x = argArr[0].
+y = argArr[1].
+
+max = 0.
+min = 0.
+if (x > y)
+  max = x.
+  min = y.
+end
+
+if (y > x)
+  max = y.
+  min = x.
+end
+
+z = x.
+gcd = y.
+remainder = 0.
+condition = 5 #/ 7.
+
+(condition > 0) >> ?
+  remainder = z #/ gcd.
+  z = gcd.
+  gcd = remainder.
+  condition = z #/ gcd.
+end
+
+biggest = max.
+cond = True.
+maxMod = 0.
+minMod = 0.
+lcm = 0.
+
+(cond) >> ?
+  maxMod = biggest #/ max.
+  minMod = biggest #/ min.
+  if (maxMod == 0)
+    if (minMod == 0)
+      lcm = max.
+      cond = False.
+    end
+  end
+  biggest = biggest + 1.
+end
+
+
+p("Max = " + max).
+p("Sum = " + (x + y)).
+p("Difference = " + (max-min)).
+p("Product = "+ (x*y)).
+p("GCD = " + gcd).
+p("LCM = " + lcm).

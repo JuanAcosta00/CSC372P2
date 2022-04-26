@@ -1,0 +1,37 @@
+ x = argArr[0].
+ y = argArr[1].
+ z = argArr[2].
+
+ starStr = "".
+ star = "*".
+ i = x.
+$$ subtract 1 star till all stars are for inital string
+$$ of length x
+(i > 0) >> ?
+  starStr = starStr + star.
+  i = i - 1.
+end
+
+i = x.
+j = y + 1.
+$$print out till we are at inclusive range y
+(i < j) >> ?
+  p(starStr).
+  starStr = starStr+star.
+  i = i + 1.
+end
+
+sum = 0.
+s = 1.
+$$ get sum of all values
+mult1 = 0.
+mult2 = 0.
+(s < z) >> ?
+  mult1 = s #/ x.
+  mult2 = s #/ y.
+  if (mult1 == 0 || mult2 == 0)
+    sum = sum + s.
+  end
+  s = s + 1.
+end
+p(sum).
